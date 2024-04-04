@@ -1,3 +1,4 @@
 data/tuning/*
 !data/tuning/index.yml
 .env
+__pycache__/
