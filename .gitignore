@@ -1,0 +1,3 @@
+data/tuning/*
+!data/tuning/index.yml
+.env
