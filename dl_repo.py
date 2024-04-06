@@ -7,11 +7,11 @@ def dl_repo(repo: Repository, dst: str|Path='./data/tuning/repositories'):
   subfolder = repo.subfolder
   dst = Path(dst) / repo.name
 
-  print(f"Processing {repo.name}...")
+  print(f"Processing repo [{repo.name}]...")
 
   # Clone or update the repository
   if not dst.exists():
-    subprocess.run(['git', 'clone', repo.url, str(dst)])
+    subprocess.run(['git', 'clone', str(repo.url), str(dst)])
   else:
     # subprocess.run(['git', '-C', str(dst), 'pull'])
     return
@@ -37,7 +37,7 @@ def dl_repo(repo: Repository, dst: str|Path='./data/tuning/repositories'):
     if exclude_path.exists():
       shutil.rmtree(exclude_path)
 
-  print(f"Completed processing {repo.name}.")
+  print(f"Completed processing repo [{repo.name}]")
 
 def dl_repos(repos: list[Repository]):
   for repo in repos:

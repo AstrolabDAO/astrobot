@@ -4,21 +4,14 @@ from langchain_core.prompts import PromptTemplate
 from langchain_community.llms import Ollama
 from langchain.callbacks.manager import CallbackManager
 from langchain.callbacks.streaming_stdout import StreamingStdOutCallbackHandler
-from langchain.chains import RetrievalQA
+from langchain_core.runnables import RunnableParallel, RunnablePassthrough
+from langchain_core.output_parsers import StrOutputParser
 
-from load_rag import load_rag
+from rag import load_store
 from dl_repo import dl_repos
-from model import Config, Repository, DocumentFolder
+from model import Config, RuntimeEnv
 
-def start_model(config: Config):
-
-  vectorstore = load_rag(config)
-  llm = Ollama(model=config.inference_model, callback_manager=CallbackManager([StreamingStdOutCallbackHandler()]))
-
-  QA_CHAIN_PROMPT = PromptTemplate(
-    input_variables=["context", "question"],
-    template=config.prompt_template,
-  )
+def start_model(env: RuntimeEnv):
 
   while True:
     query = input("\nUser> ")
@@ -26,21 +19,31 @@ def start_model(config: Config):
         break
     if query.strip() == "":
         continue
+    env.inference_chain.invoke(query)
 
-    qa_chain = RetrievalQA.from_chain_type(
-      llm,
-      retriever=vectorstore.as_retriever(),
-      chain_type_kwargs={"prompt": QA_CHAIN_PROMPT},
-    )
-    result = qa_chain({"query": query})
+def get_config() -> Config:
+  with open('./config.yml', 'r') as file:
+    return Config(**yaml.safe_load(file))
+
+def setup_runtime() -> RuntimeEnv:
+  config = get_config()
+  dl_repos(config.tuning.data.repositories)
+  store = load_store(config)
+  llm = Ollama(
+    model=config.inference.model.name,
+    callback_manager=CallbackManager([StreamingStdOutCallbackHandler()]),
+    **config.inference.model.params)
+
+  prompt = PromptTemplate(
+    input_variables=["context", "question"],
+    template=config.inference.prompt.template)
+
+  rag_setup = RunnableParallel(
+      {"context": store.as_retriever(), "question": RunnablePassthrough()}
+  )
+  inference_chain = rag_setup | prompt | llm | StrOutputParser()
+  return RuntimeEnv(config, store, llm, prompt, rag_setup, inference_chain)
 
 if __name__ == '__main__':
-  with open('./data/tuning/index.yml', 'r') as file:
-    raw = yaml.safe_load(file)
-    repositories = list(map(lambda r: Repository(**r), raw['repositories']))
-    folders = list(map(lambda f: DocumentFolder(**f), raw['folders']))
-    del raw['repositories']
-    del raw['folders']
-    config = Config(repositories=repositories, folders=folders, **raw)
-  dl_repos(config.repositories)
-  start_model(config)
+  env = setup_runtime()
+  start_model(env)

@@ -1,0 +1,175 @@
+# training == billion-parameters encoding
+training:
+  model:
+    name: qwen:0.5b # qwen:1.8b mixtral:7x8b gemma:2b
+    params: {}
+    # temperature: 0.33
+  splitter:
+    chunk_size: 1024
+    chunk_overlap: 128
+    is_separator_regex: False
+    separators:
+      - "\n\n"
+      - "\n"
+      - "."
+      - ","
+      - " "
+      - "\u200B"  # Zero-width space
+      - "\uff0c"  # Fullwidth comma
+      - "\u3001"  # Ideographic comma
+      - "\uff0e"  # Fullwidth full stop
+      - "\u3002"  # Ideographic full stop
+      - ""
+  data:
+    digests: {}
+    digest: null
+    repositories:
+      # general programming
+      - name: "typescript-docs"
+        url: "https://github.com/microsoft/TypeScript-Website"
+        subfolder: "/packages/documentation/copy/en"
+        exclude: []
+      - name: "python-docs"
+        url: "https://github.com/python/cpython"
+        subfolder: "/Doc"
+        exclude: []
+
+      # front-end
+      - name: "react-docs"
+        url: "https://github.com/reactjs/react.dev"
+        subfolder: "/src/content/learn"
+        exclude: []
+      - name: "vue-docs"
+        url: "https://github.com/vuejs/docs"
+        subfolder: "/src"
+        exclude: []
+      - name: "svelte-docs"
+        url: "https://github.com/sveltejs/svelte"
+        subfolder: "/documentation/docs"
+        exclude: []
+
+      # web3 sdks
+      - name: "ethereum-docs"
+        url: "https://github.com/ethereum/solidity"
+        subfolder: "/docs"
+        exclude: []
+      - name: "web3-py-docs"
+        url: "https://github.com/ethereum/web3.py"
+        subfolder: "/docs"
+        exclude: []
+      - name: "ercs"
+        url: "https://github.com/ethereum/ERCs"
+        subfolder: "/ERCs"
+        exclude: []
+      - name: "web3js-docs"
+        url: "https://github.com/web3/web3.js"
+        subfolder: "/docs/docs"
+        exclude: []
+      - name: "ethers-js-docs"
+        url: "https://github.com/ethers-io/ethers.js"
+        subfolder: "/docs.wrm"
+        exclude: []
+      - name: "foundry-docs"
+        url: "https://github.com/foundry-rs/book"
+        subfolder: "/src"
+        exclude: []
+
+      ## astrolab docs
+      - name: "astrolab-docs"
+        url: "https://github.com/AstrolabDAO/front"
+        subfolder: "/public/mds"
+        exclude: ["/legal"]
+
+      ## astrolab strats
+      - name: "astrolab-strats"
+        url: "https://github.com/AstrolabDAO/front"
+        subfolder: "/"
+        exclude: []
+
+      ## astrolab swapper
+      - name: "astrolab-swapper"
+        url: "https://github.com/AstrolabDAO/swapper"
+        subfolder: "/"
+        exclude: []
+
+    folders:
+      - name: "documents"
+        path: "./documents"
+        match: "*.*"
+
+# tuning == embedding == retrieval augmented generation (rag) == context extension
+tuning:
+  model:
+    # https://qdrant.github.io/fastembed/examples/Supported_Models/#supported-sparse-text-embedding-models
+    name: nomic-ai/nomic-embed-text-v1.5 # nomic-ai/nomic-embed-text-v1.5 mxbai-embed-large BAAI/bge-base-en-v1.5 nomic-embed-text mistral:instruct mxbai-embed-large
+    params:
+      # max_length: 2048
+      threads: 4
+      # temperature: 0.2
+      # repeat_penalty: 1
+      # num_ctx: 16384
+  splitter:
+    chunk_size: 512
+    chunk_overlap: 126
+    is_separator_regex: False
+    separators:
+      - "\n\n"
+      - "\n"
+      - "."
+      - ","
+      - " "
+      - "\u200B"  # Zero-width space
+      - "\uff0c"  # Fullwidth comma
+      - "\u3001"  # Ideographic comma
+      - "\uff0e"  # Fullwidth full stop
+      - "\u3002"  # Ideographic full stop
+      - ""
+  data:
+    digests: {}
+    digest: null
+    repositories:
+      ## astrolab docs
+      # - name: "astrolab-docs"
+      #   url: "https://github.com/AstrolabDAO/front"
+      #   subfolder: "/public/mds"
+      #   exclude: ["/legal"]
+      ## astrolab swapper
+      - name: "astrolab-swapper"
+        url: "https://github.com/AstrolabDAO/swapper"
+        subfolder: "/"
+        exclude: []
+
+    folders:
+      - name: "documents"
+        path: "./documents"
+        match: "*.*"
+
+# inference == base conversational model
+inference:
+  model:
+    name: gemma:2b # dolphin-phi qwen:1.8b qwen:4b mistral:7b mixtral:7x8b gemma:2b gemma:7b orca-mini:3b
+    params:
+      # max_length: 1024
+      # threads: 4
+      temperature: 0.25
+      repeat_penalty: 1.2
+      # stop": [
+      #   "<start_of_turn>",
+      #   "<end_of_turn>"
+      # ]
+  prompt:
+    template: >
+      Using the following context over prior knowledge, politely answer the question at the end.
+      Never mention the context in your answer, it is your knowledge base that nobody should know about.
+
+      --- base context (must not be part of your answer)
+      Your name is Astrobot, Astrolab DAO conversational AI assistant, versed in Economics, DeFi, and all.
+      You like to make jokes when you can (eg. when you're unable to answer a question).
+      Do not repeat yourself, nor make up answers if you do not know the answer.
+      Keep the answer clear, informative, concise, and markdown (.md) formatted.
+
+      --- question context
+      {context}
+
+      --- question
+      {question}

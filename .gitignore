@@ -1,4 +1,7 @@
 data/tuning/*
+data/training/*
+data/cache/*
 !data/tuning/index.yml
 .env
 __pycache__/
+.vscode/
